@@ -71,7 +71,7 @@ MyAddr getMyAddr(char *dev)
     const char *regexMAC = "(ether )([0-9a-fA-F]{2}[:]){5}[0-9a-fA-F][0-9a-fA-F]";
 
     regex_t regexComIP, regexComMac;
-    regmatch_t matchIP[20],matchMAC[20];
+    regmatch_t matchIP[MAX_STR_SIZE],matchMAC[MAX_STR_SIZE];
 
     int len=0;
     char mIP[MAX_STR_SIZE], mMAC[MAX_STR_SIZE];
@@ -116,6 +116,7 @@ MyAddr getMyAddr(char *dev)
             printf("catch All");
             return myaddr;
         }
+
     }
 
     printf("Out of While\n");
