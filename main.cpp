@@ -74,7 +74,7 @@ MyAddr getMyAddr(char *dev)
 
     int len=0;
     char mIP[MAX_STR_SIZE], mMAC[MAX_STR_SIZE];
-    int flag=0;
+    int fIP=0,fMAC=0;
 
     if(regcomp(&regexComIP,regexIP,REG_EXTENDED) || regcomp(&regexComMac,regexMAC,REG_EXTENDED))
     {
@@ -84,32 +84,36 @@ MyAddr getMyAddr(char *dev)
 
     while(fgets(line,MAX_STR_SIZE,fp)!=NULL)
     {
-        if(regexec(&regexComIP,line,MAX_STR_SIZE,matchIP,REG_EXTENDED)==0)
+        printf("%s\n",line);
+        if(fIP==0 && regexec(&regexComIP,line,MAX_STR_SIZE,matchIP,REG_EXTENDED)==0)
         {
             len = matchIP[0].rm_eo-matchIP[0].rm_so;
             strncpy(mIP, line+matchIP[0].rm_so, len);
             myaddr.ip_=Ip(mIP+strlen("inet "));
-            flag++;
+            fIP=1;
+            regfree(&regexComIP);
+            printf("%s\n",mIP);
         }
 
-        if(regexec(&regexComMac,line,MAX_STR_SIZE,matchMAC,REG_EXTENDED)==0)
+        if(fMAC==0 && regexec(&regexComMac,line,MAX_STR_SIZE,matchMAC,REG_EXTENDED)==0)
         {
             len = matchMAC[0].rm_eo - matchMAC[0].rm_so;
             strncpy(mMAC, line+matchMAC[0].rm_so,len);
             myaddr.mac_=Mac(mMAC+strlen("ether "));
-            flag++;
+            fMAC=1;
+            regfree(&regexComMac);
+            printf("%s\n",mMAC);
         }
 
-        if(flag==2)
+        if(fIP==1 && fMAC==1)
         {
-            regfree(&regexComIP);
-            regfree(&regexComMac);
-            return myaddr;  // segement fault
+            printf("catch All");
+            return myaddr;
         }
 
 
     }
-
+    printf("Out of While\n");
     regfree(&regexComIP);
     regfree(&regexComMac);
 
