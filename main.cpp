@@ -45,6 +45,7 @@ int main(int argc, char* argv[]) {
     attackCase = (argc-2) / 2 ;
 
     MyAddr myAddr = getMyAddr(argv[1]);
+
     printf("getMyAddr Done\n");
 
 }
@@ -84,11 +85,13 @@ MyAddr getMyAddr(char *dev)
 
     while(fgets(line,MAX_STR_SIZE,fp)!=NULL)
     {
-        printf("%s\n",line);
+        printf("%s",line);
+
         if(fIP==0 && regexec(&regexComIP,line,MAX_STR_SIZE,matchIP,REG_EXTENDED)==0)
         {
             len = matchIP[0].rm_eo-matchIP[0].rm_so;
             strncpy(mIP, line+matchIP[0].rm_so, len);
+            mIP[len]='\0';
             myaddr.ip_=Ip(mIP+strlen("inet "));
             fIP=1;
             regfree(&regexComIP);
@@ -99,27 +102,27 @@ MyAddr getMyAddr(char *dev)
         {
             len = matchMAC[0].rm_eo - matchMAC[0].rm_so;
             strncpy(mMAC, line+matchMAC[0].rm_so,len);
+            mMAC[len]='\0';
             myaddr.mac_=Mac(mMAC+strlen("ether "));
             fMAC=1;
             regfree(&regexComMac);
             printf("%s\n",mMAC);
         }
 
-        if(fIP==1 && fMAC==1)
+        printf("%d %d\n",fIP,fMAC);
+
+        if(fIP==1 && fMAC==1)       // ....Why?...
         {
             printf("catch All");
             return myaddr;
         }
-
-
     }
+
     printf("Out of While\n");
     regfree(&regexComIP);
     regfree(&regexComMac);
 
     fprintf(stderr,"We can't find MY Address");
     exit(1);
-
-
 
 }
