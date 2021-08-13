@@ -13,25 +13,19 @@
 
 #define MAX_STR_SIZE 100
 
-
-#pragma pack(push, 1)
 struct EthArpPacket final {
 	EthHdr eth_;
 	ArpHdr arp_;
 };
-#pragma pack(pop)
 
 struct MyAddr final{
   Ip ip_;
   Mac mac_;
 };
 
-
-
-
 void usage() {
-	printf("syntax: send-arp-test <interface>\n");
-	printf("sample: send-arp-test wlan0\n");
+    printf("syntax: ARPSpoofing <interface> <sender ip> <target ip> [<sender ip 2> <target ip 2> ...]\n");
+    printf("sample: ARPSpoofing eth0 192.168.0.2 192.168.0.3\n");
 }
 
 MyAddr getMyAddr(char *dev);
@@ -77,6 +71,7 @@ MyAddr getMyAddr(char *dev)
 
     regex_t regexComIP, regexComMac;
     regmatch_t matchIP[20],matchMAC[20];
+
     int len=0;
     char mIP[MAX_STR_SIZE], mMAC[MAX_STR_SIZE];
     int flag=0;
@@ -89,14 +84,11 @@ MyAddr getMyAddr(char *dev)
 
     while(fgets(line,MAX_STR_SIZE,fp)!=NULL)
     {
-        //printf("%s",line);
-
         if(regexec(&regexComIP,line,MAX_STR_SIZE,matchIP,REG_EXTENDED)==0)
         {
             len = matchIP[0].rm_eo-matchIP[0].rm_so;
             strncpy(mIP, line+matchIP[0].rm_so, len);
             myaddr.ip_=Ip(mIP+strlen("inet "));
-            //printf("%s\n",mIP);
             flag++;
         }
 
@@ -105,17 +97,14 @@ MyAddr getMyAddr(char *dev)
             len = matchMAC[0].rm_eo - matchMAC[0].rm_so;
             strncpy(mMAC, line+matchMAC[0].rm_so,len);
             myaddr.mac_=Mac(mMAC+strlen("ether "));
-            //printf("%s\n",mMAC);
             flag++;
         }
 
         if(flag==2)
         {
-            //printf("regfree\n");
             regfree(&regexComIP);
             regfree(&regexComMac);
-            //printf("return\n");
-            return myaddr;
+            return myaddr;  // segement fault
         }
 
 
