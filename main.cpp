@@ -204,8 +204,6 @@ void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP, MyAddr attacker)
 
     Ip sIP = Ip(sendIP);
     Ip tIP = Ip(targetIP);
-    sendARPRequest(handle,attacker.mac_,Mac::broadcastMac(),attacker.mac_,attacker.ip_,Mac::nullMac(),tIP);
-    Mac tMAC = getMACAddr(targetIP);
     sendARPRequest(handle,attacker.mac_,Mac::broadcastMac(),attacker.mac_,attacker.ip_,Mac::nullMac(),sIP);
     Mac sMAC = getMACAddr(sendIP);
     printf("smac : %s\n",std::string(sMAC).c_str());
