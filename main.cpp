@@ -269,7 +269,7 @@ void spoofedIPpacket(pcap_t* handle, Mac smac, Mac dmac, Ip sip,Ip tip,MyAddr at
 
         if(ethip->eth_.type() == EthHdr::Ip4 && ethip->ip_.saddr==sip && ethip->eth_.smac()==smac && ethip->eth_.dmac()==dmac)
         {
-            ARPinfect(handle, attacker.mac_,smac,ArpHdr::Request, attacker.mac_, attacker.ip_, dmac, tip);
+            ARPinfect(handle, smac,dmac,ArpHdr::Request, smac, attacker.ip_, dmac, tip);
             break;
         }
 
