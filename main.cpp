@@ -269,7 +269,6 @@ void spoofedIPpacket(pcap_t* handle, Mac smac, Mac dmac, Ip sip,Ip tip,MyAddr at
 
         if(ethip->eth_.type() == EthHdr::Ip4 && ethip->ip_.saddr==sip && ethip->ip_.daddr!=attacker.ip_)
         {
-            printf("Capture packet\n");
             ARPinfect(handle, smac,dmac,ArpHdr::Request, smac, attacker.ip_, dmac, tip);
             break;
         }
@@ -297,9 +296,6 @@ void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP, MyAddr attacker)
     ARPreInfect(handle,tIP,sIP,attacker);
 
     spoofedIPpacket(handle, attacker.mac_, tMAC, sIP, tIP,attacker);
-
-
-
 
 }
 
